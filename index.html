@@ -141,16 +141,16 @@
   <script>
     (() => {
       const CIRCLES = {
-        small: {
+        standard: {
           diameterVw: 3.5,
           minDuration: 1000,
           maxDuration: 1000,
           color: '#C49A6C',
         },
-        large: {
-          diameterVw: 6,
-          minDuration: 500,
-          maxDuration: 500,
+        accent: {
+          diameterVw: 3.5,
+          minDuration: 1000,
+          maxDuration: 1000,
           color: '#D16B3D',
         },
       };
@@ -160,7 +160,7 @@
       const TRANSITION_GAP_MS = 300;
       const COUNTDOWN_START = 4;
       const COUNTDOWN_STEP_MS = 1000;
-      const CIRCLES_PER_SEQUENCE = 5;
+      const CIRCLES_PER_SEQUENCE = 6;
 
       const app = document.getElementById('app');
       const startButton = document.getElementById('startButton');
@@ -170,8 +170,9 @@
 
       let started = false;
       let isPaused = false;
-      let circles = 0;
-      let sequenceCircles = 0;
+      let countedCircles = 0;
+      let sequencePosition = 0;
+      let accentCirclePosition = 0;
       let activeTimer = null;
       let previousPosition = null;
       let wakeLock = null;
@@ -184,7 +185,7 @@
       };
 
       const updateHud = () => {
-        hud.textContent = `Circles: ${circles}`;
+        hud.textContent = `Circles: ${countedCircles}`;
       };
 
       const clearActiveTimer = () => {
@@ -242,7 +243,13 @@
         }
       };
 
-      const selectCircleType = () => (Math.random() < 0.7 ? CIRCLES.small : CIRCLES.large);
+      const chooseAccentCirclePosition = () => Math.floor(Math.random() * CIRCLES_PER_SEQUENCE);
+
+      const startSequence = () => {
+        sequencePosition = 0;
+        accentCirclePosition = chooseAccentCirclePosition();
+        showNextCircle();
+      };
 
       const getCirclePosition = (diameterVw) => {
         const viewportWidth = window.innerWidth;
@@ -301,8 +308,7 @@
 
           if (current === 0) {
             clearOverlay();
-            sequenceCircles = 0;
-            showNextCircle();
+            startSequence();
             return;
           }
 
@@ -324,7 +330,7 @@
       const finishCircle = () => {
         hideCircle();
 
-        if (sequenceCircles >= CIRCLES_PER_SEQUENCE) {
+        if (sequencePosition >= CIRCLES_PER_SEQUENCE) {
           startCountdown();
           return;
         }
@@ -337,7 +343,8 @@
           return;
         }
 
-        const nextCircle = selectCircleType();
+        const isAccentCircle = sequencePosition === accentCirclePosition;
+        const nextCircle = isAccentCircle ? CIRCLES.accent : CIRCLES.standard;
         const position = getCirclePosition(nextCircle.diameterVw);
         const duration = randomBetween(nextCircle.minDuration, nextCircle.maxDuration);
 
@@ -351,8 +358,12 @@
         circle.style.display = 'block';
 
         previousPosition = position;
-        circles += 1;
-        sequenceCircles += 1;
+        sequencePosition += 1;
+
+        if (!isAccentCircle) {
+          countedCircles += 1;
+        }
+
         updateHud();
         schedule(finishCircle, duration);
       };
@@ -367,7 +378,6 @@
 
       const resumeSession = () => {
         isPaused = false;
-        sequenceCircles = 0;
         startCountdown();
       };
 
