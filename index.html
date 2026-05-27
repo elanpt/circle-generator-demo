@@ -161,12 +161,20 @@
       const COUNTDOWN_START = 4;
       const COUNTDOWN_STEP_MS = 1000;
       const CIRCLES_PER_SEQUENCE = 6;
+      const PAR_CIRCLE_DURATION_MS = 2000;
+      const PAR_RESET_MIN_MS = 4000;
+      const PAR_RESET_MAX_MS = 7000;
+      const PAR_CIRCLE = {
+        diameterVw: 3.5,
+        color: '#C49A6C',
+      };
 
       const app = document.getElementById('app');
       const startButton = document.getElementById('startButton');
       const hud = document.getElementById('hud');
       const circle = document.getElementById('circle');
       const overlay = document.getElementById('overlay');
+      const isParMode = new URLSearchParams(window.location.search).get('mode') === 'par';
 
       let started = false;
       let isPaused = false;
@@ -185,7 +193,7 @@
       };
 
       const updateHud = () => {
-        hud.textContent = `Circles: ${countedCircles}`;
+        hud.textContent = isParMode ? `Reps: ${countedCircles}` : `Circles: ${countedCircles}`;
       };
 
       const clearActiveTimer = () => {
@@ -368,6 +376,44 @@
         schedule(finishCircle, duration);
       };
 
+      const startParReset = () => {
+        if (isPaused) {
+          return;
+        }
+
+        hideCircle();
+        clearOverlay();
+        setState('gap');
+        schedule(showParCircle, randomBetween(PAR_RESET_MIN_MS, PAR_RESET_MAX_MS));
+      };
+
+      const finishParCircle = () => {
+        hideCircle();
+        countedCircles += 1;
+        updateHud();
+        startParReset();
+      };
+
+      const showParCircle = () => {
+        if (isPaused) {
+          return;
+        }
+
+        const position = getCirclePosition(PAR_CIRCLE.diameterVw);
+
+        setState('circle');
+        clearOverlay();
+        circle.style.width = `${PAR_CIRCLE.diameterVw}vw`;
+        circle.style.height = `${PAR_CIRCLE.diameterVw}vw`;
+        circle.style.left = `${position.xVw}vw`;
+        circle.style.top = `${position.yVh}vh`;
+        circle.style.background = PAR_CIRCLE.color;
+        circle.style.display = 'block';
+
+        previousPosition = position;
+        schedule(finishParCircle, PAR_CIRCLE_DURATION_MS);
+      };
+
       const pauseSession = () => {
         isPaused = true;
         clearActiveTimer();
@@ -378,6 +424,12 @@
 
       const resumeSession = () => {
         isPaused = false;
+
+        if (isParMode) {
+          startParReset();
+          return;
+        }
+
         startCountdown();
       };
 
@@ -422,8 +474,18 @@
         updateHud();
         attemptFullscreen();
         void requestWakeLock();
+
+        if (isParMode) {
+          startParReset();
+          return;
+        }
+
         startCountdown();
       };
+
+      if (isParMode) {
+        startButton.textContent = 'START PAR';
+      }
 
       startButton.addEventListener('pointerup', startSession);
       startButton.addEventListener('click', startSession);
